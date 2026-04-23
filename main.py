@@ -1,30 +1,48 @@
 import pandas as pd
+import tkinter as tk
+from tkinter import messagebox
 
 df = pd.read_excel("autopiezas.beta.xlsx")
-
-# Limpiar nombres de columnas
 df.columns = df.columns.str.strip()
-
-# Asegurar que id sea texto
 df["id"] = df["id"].astype(str)
 
-id_producto = input("Ingrese el ID del producto: ")
-consumo = float(input("Ingrese el consumo del producto: "))
+def calcular():
+    id_producto = entry_id.get()
+    try:
+        consumo = float(entry_consumo.get())
+    except:
+        messagebox.showerror("Error", "El consumo debe ser un número")
+        return
 
-encontrado = False
+    for index, row in df.iterrows():
+        if row["id"].lower() == id_producto.lower():
+            stock = row["stock_fis"] - row["stock_res"]
 
-for index, row in df.iterrows():
-    if row["id"] == id_producto:
-        encontrado = True
+            if stock > 0 and stock >= 2 * consumo:
+                pedir = 0
+            else:
+                pedir = max(0, 2 * consumo - stock)
 
-        stock = row["stock_fis"] - row["stock_res"]
+            resultado.set(f"Pedir: {pedir}")
+            return
 
-        if stock > 0 and stock >= 2 * consumo:
-            pedir = 0
-        else:
-            pedir = max(0, 2 * consumo - stock)
+    resultado.set("Producto no encontrado")
 
-        print(f"Producto {id_producto}, Pedir: {pedir}")
+ventana = tk.Tk()
+ventana.title("Calculadora de Stock")
+ventana.geometry("300x200")
 
-if not encontrado:
-    print("No se encontró ese ID")
+tk.Label(ventana, text="ID del producto").pack()
+entry_id = tk.Entry(ventana)
+entry_id.pack()
+
+tk.Label(ventana, text="Consumo").pack()
+entry_consumo = tk.Entry(ventana)
+entry_consumo.pack()
+
+tk.Button(ventana, text="Calcular", command=calcular).pack(pady=10)
+
+resultado = tk.StringVar()
+tk.Label(ventana, textvariable=resultado, font=("Arial", 12)).pack()
+
+ventana.mainloop()
