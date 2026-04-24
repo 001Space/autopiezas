@@ -1,137 +1,124 @@
 import pandas as pd
 import tkinter as tk
 from tkinter import messagebox
+import os
 
+# --- 1. CONFIGURACIÓN Y CARGA DE DATOS ---
 ARCHIVO_STOCK = "autopiezas.beta.xlsx"
 ARCHIVO_SABO = "sabo.xlsx"
 
+def normalizar_id(valor):
+    """Limpia el ID para que coincida siempre (quita espacios y .0)"""
+    if pd.isna(valor): return ""
+    return str(valor).strip().replace(".0", "").upper()
+
 def cargar_datos():
     try:
-        # Cargar stock
-        stock_df = pd.read_excel(ARCHIVO_STOCK)
-        stock_df.columns = stock_df.columns.str.strip()
-        stock_df["id"] = stock_df["id"].astype(str)
+        # Verificamos si los archivos existen
+        if not os.path.exists(ARCHIVO_STOCK) or not os.path.exists(ARCHIVO_SABO):
+            messagebox.showerror("Error", "No se encontraron los archivos Excel en la carpeta.")
+            return None, None
 
-        # Cargar consumo
-        consumo_df = pd.read_excel(ARCHIVO_SABO)
-        consumo_df.columns = consumo_df.columns.str.strip()
-        consumo_df["id"] = consumo_df["id"].astype(str)
+        # Cargar Autopiezas
+        df_a = pd.read_excel(ARCHIVO_STOCK)
+        df_a.columns = df_a.columns.str.strip().str.lower()
+        df_a["id"] = df_a["id"].apply(normalizar_id)
 
-        # Verificar columnas obligatorias
-        columnas_requeridas = {"id", "cantidad"}
+        # Cargar Sabo
+        df_s = pd.read_excel(ARCHIVO_SABO)
+        df_s.columns = df_s.columns.str.strip()
+        # Renombramos según las columnas de tus imágenes
+        df_s.rename(columns={"N° SABO": "id", "Consumo": "cantidad", "stock": "stock_sabo"}, inplace=True)
+        df_s["id"] = df_s["id"].apply(normalizar_id)
 
-        if not columnas_requeridas.issubset(consumo_df.columns):
-            faltantes = columnas_requeridas - set(consumo_df.columns)
-            raise ValueError(
-                f"Faltan columnas en {ARCHIVO_SABO}: {', '.join(faltantes)}"
-            )
-
-        return stock_df, consumo_df
-
-    except FileNotFoundError as e:
-        messagebox.showerror(
-            "Archivo no encontrado",
-            f"No se encontró el archivo:\n{e.filename}"
-        )
-        exit()
-
+        return df_a, df_s
     except Exception as e:
-        messagebox.showerror(
-            "Error al cargar datos",
-            str(e)
-        )
-        exit()
-        
-df_stock, df_consumo = cargar_datos()   
+        messagebox.showerror("Error", f"Fallo al leer los archivos: {e}")
+        return None, None
 
-def obtener_consumo_total(id_producto):
-    consumo = df_consumo [ df_consumo ["id"].str.lower() == id_producto.lower()]
+# Cargamos los DataFrames globalmente
+df_stock, df_consumo = cargar_datos()
 
-    if ARCHIVO_SABO.empy:
-        return 0
-    return consumo["cantidad"].sum()
+# --- 2. FUNCIONES DE BÚSQUEDA ---
 
 def buscar_producto(id_producto):
-    producto = df_stock [ df_stock["id"].str.lower() == id_producto.lower()]
+    """Busca los datos en la tabla de autopiezas"""
+    if df_stock is None: return None
+    res = df_stock[df_stock["id"] == id_producto]
+    return res.iloc[0] if not res.empty else None
+
+def obtener_datos_sabo(id_producto):
+    """Obtiene consumo y stock de la tabla Sabo"""
+    if df_consumo is None: return 0, 0
+    res = df_consumo[df_consumo["id"] == id_producto]
+    if res.empty: return 0, 0
     
-    if producto.empty:
-        return None
-    
-    return producto.iloc[0]
+    # Sumamos por si hay filas duplicadas
+    con = pd.to_numeric(res["cantidad"], errors='coerce').fillna(0).sum()
+    stk = pd.to_numeric(res["stock_sabo"], errors='coerce').fillna(0).sum()
+    return con, stk
 
-def calcular_reposicion(stock_actual, consumo_total):
-    return max (0, round(consumo_total - stock_actual))
+# --- 3. LÓGICA DEL BOTÓN ---
 
-
-def  calcular():
-    id_producto = entry_id.get().strip()
-   
-    if not id_producto:
-       messagebox.showwarning(
-           "SIN ID", "Ingrese ID de prodcuto"
-           
-       )
-       return
-
-    producto = buscar_producto(id_producto)
-    if producto is None:
-        resultado.set("Producto no encontrado")
+def calcular():
+    id_input = entry_id.get().strip()
+    if not id_input:
+        messagebox.showwarning("Atención", "Ingresa un ID")
         return
-    stock_actual = producto["stock_fis"] - producto["stock_res"]
-    consumo_total = obtener_consumo_total(id_producto)
-    cantidad_pedir = calcular_reposicion(stock_actual, consumo_total)
 
-    resultado.set(f"Producto: {producto['descripcion']}\n" f"Stock actual: {stock_actual}\n" f"Consumo total: {consumo_total}\n" f"Pedir: {cantidad_pedir}")
+    id_norm = normalizar_id(id_input)
+    
+    # Buscamos en ambas fuentes
+    prod_auto = buscar_producto(id_norm)
+    consumo_sabo, stock_sabo = obtener_datos_sabo(id_norm)
 
-def obtener_consumo_total(id_producto):
-    consumos = df_consumo[
-        df_consumo["id"].str.lower() == id_producto.lower()
-    ]
+    if prod_auto is None and consumo_sabo == 0:
+        resultado.set("❌ Producto no encontrado.")
+        return
 
-    if consumos.empty:
-        return 0
+    # Stock Autopiezas (físico - reservado)
+    st_auto = 0
+    nombre = "Producto Sabo"
+    if prod_auto is not None:
+        st_auto = float(prod_auto.get("stock_fis", 0)) - float(prod_auto.get("stock_res", 0))
+        nombre = prod_auto.get("linea", "Sin descripción")
 
-    consumos["cantidad"] = pd.to_numeric(
-        consumos["cantidad"],
-        errors="coerce"
-    ).fillna(0)
+    # STOCK TOTAL CONSOLIDADO
+    stock_total = st_auto + stock_sabo
 
-    return consumos["cantidad"].sum()
+    # FÓRMULA: If 2 * consumo < stock -> 0, else (2 * consumo) - stock
+    if (2 * consumo_sabo) < stock_total:
+        pedido = 0
+    else:
+        pedido = max(0, (2 * consumo_sabo) - stock_total)
 
-#interfaz :p
+    # Actualizar pantalla
+    resultado.set(
+        f"ID: {id_norm}\n"
+        f"Producto: {nombre}\n"
+        f"----------------------------------\n"
+        f"Stock Total: {stock_total:.0f} (Auto: {st_auto:.0f} + Sabo: {stock_sabo:.0f})\n"
+        f"Consumo: {consumo_sabo:.0f}\n"
+        f"----------------------------------\n"
+        f"CANTIDAD A PEDIR: {pedido:.0f}"
+    )
+
+# --- 4. INTERFAZ GRÁFICA ---
 
 ventana = tk.Tk()
-ventana.title("Reposicion de Stock de Autopiezas")
-ventana.geometry("500x350")
-ventana.resizable(False, False)
+ventana.title("Control de Stock - Autopiezas")
+ventana.geometry("450x400")
 
-tk.Label()  
-ventana, text="ID del producto: ",
-font= ("Arial", 12).pack(pady=10)
-
-entry_id = tk.Entry(
-    ventana, font=("Arial", 12), width=30
-)
-
+tk.Label(ventana, text="Ingrese ID del Producto:", font=("Arial", 11, "bold")).pack(pady=15)
+entry_id = tk.Entry(ventana, font=("Arial", 12), justify="center", width=25)
 entry_id.pack()
+entry_id.bind('<Return>', lambda e: calcular()) # Calcular al tocar Enter
 
-tk.Buttom(
-    ventana,
-    text="Calcular Reposicitorio",
-    command=calcular,
-    font=("Arial", 12),
-    bg="#4C7AAF",
-    fg="white",
-).pack (pady=20)
+tk.Button(ventana, text="Calcular Reposición", command=calcular, bg="#2E5077", fg="white", font=("Arial", 10, "bold"), padx=10, pady=5).pack(pady=20)
 
 resultado = tk.StringVar()
-
-tk.Label(
-    ventana,
-    textvariable=resultado,
-    font=("Arial", 12),
-    justify="left",
-    wraplength=450
-).pack(pady=10)
+resultado.set("Esperando datos...")
+lbl_res = tk.Label(ventana, textvariable=resultado, font=("Consolas", 10), justify="left", bg="#F0F0F0", relief="sunken", padx=10, pady=10, width=50)
+lbl_res.pack(pady=10)
 
 ventana.mainloop()
