@@ -1,0 +1,135 @@
+#codigo pendiente de la interfaz grafica.
+
+
+ventana = tk.Tk()
+ventana.title("Sistema de Gestión de Repuestos")
+ventana.geometry("950x700")
+ventana.resizable(True, True)
+
+notebook = ttk.Notebook(ventana)
+notebook.pack(expand=True, fill="both", padx=10, pady=10)
+
+#tabla 1 de la interfaz grafica
+tab1 = ttk.Frame(notebook)
+notebook.add(tab1, text="🔍 Buscar por Código")
+
+tk.Label(
+    tab1,
+    text="Ingrese N° SABO o ID:",
+    font=("Arial", 13, "bold")
+).pack(pady=20)
+
+entry_busqueda = tk.Entry(
+    tab1,
+    font=("Arial", 14),
+    justify="center",
+    width=30
+)
+
+#alertas en busqueda individual, solucionar
+entry_busqueda.pack(pady=10)
+entry_busqueda.bind("<Return>", lambda e: buscar_individual())
+
+tk.Button(
+    tab1,
+    text="CONSULTAR",
+    command=buscar_individual,
+    bg="#2E5077",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    padx=25,
+    pady=8
+).pack(pady=15)
+
+texto_resultado = tk.StringVar(value="Esperando búsqueda...")
+
+lbl_res = tk.Label(
+    tab1,
+    textvariable=texto_resultado,
+    font=("Consolas", 11),
+    justify="left",
+    anchor="nw",
+    bg="#F8F9FA",
+    relief="solid",
+    bd=1,
+    padx=20,
+    pady=20,
+    width=65,
+    height=14
+)
+lbl_res.pack(pady=20)
+
+# ============================================================
+# PESTAÑA 2 - LISTADO COMPLETO
+# ============================================================
+tab2 = ttk.Frame(notebook)
+notebook.add(tab2, text="📋 Listado Completo")
+
+frame_controles = tk.Frame(tab2)
+frame_controles.pack(fill="x", pady=10)
+
+#alertas en carga de tabla completa: solucionar
+tk.Button(
+    frame_controles,
+    text="🔄 CARGAR / ACTUALIZAR TABLA",
+    command=cargar_tabla_completa,
+    bg="#D4AC0D",
+    fg="black",
+    font=("Arial", 10, "bold"),
+    padx=20,
+    pady=8
+).pack()
+
+frame_tabla = tk.Frame(tab2)
+frame_tabla.pack(expand=True, fill="both", padx=10, pady=10)
+
+#columnas nuevas
+cols = ("id", "desc", "stk", "cons", "pc", "ped")
+
+tabla = ttk.Treeview(
+    frame_tabla,
+    columns=cols,
+    show="headings"
+)
+
+tabla.heading("id", text="ID")
+tabla.heading("desc", text="Descripción")
+tabla.heading("stk", text="Stock Total")
+tabla.heading("cons", text="Consumo")
+tabla.heading("pc", text="Pend. Clientes")
+tabla.heading("ped", text="Cantidad a Pedir")
+tabla.column("id", width=120, anchor="center")
+tabla.column("desc", width=320)
+tabla.column("stk", width=110, anchor="center")
+tabla.column("cons", width=100, anchor="center")
+tabla.column("pc", width=130, anchor="center")
+tabla.column("ped", width=140, anchor="center")
+
+scroll_y = ttk.Scrollbar(
+    frame_tabla,
+    orient="vertical",
+    command=tabla.yview
+)
+
+scroll_x = ttk.Scrollbar(
+    frame_tabla,
+    orient="horizontal",
+    command=tabla.xview
+)
+
+tabla.configure(
+    yscrollcommand=scroll_y.set,
+    xscrollcommand=scroll_x.set
+)
+
+tabla.pack(side="top", expand=True, fill="both")
+scroll_y.pack(side="right", fill="y")
+scroll_x.pack(side="bottom", fill="x")
+
+ventana.mainloop()
+
+
+#Buscar formas de exportar aplicaciones a un archivo excel
+
+#error en linea 170: No encuentrwa el commando+buscar_individual, solucionar   
+#faggots 
