@@ -72,16 +72,10 @@ def cargar_datos():
         }, inplace=True)
 
     df_s["id"] = df_s["id"].apply(normalizar_id)
-
-        # =====================================================
-        # PEDIDOS PENDIENTES CLIENTES
-        # =====================================================
+#pedidos clientes
     df_c = pd.read_excel(ARCHIVO_CLIENTES)
     df_c.columns = df_c.columns.str.strip().str.lower()
-
-        # Archivo dinámico de Excel:
-        # Etiquetas de fila = código del producto
-        # Suma de cantpend = deuda con clientes
+#en teoria los files ya corren biene
 
     df_c.rename(columns={
             "etiquetas de fila": "id",
@@ -104,7 +98,7 @@ df_stock, df_consumo, df_clientes = cargar_datos()
 def obtener_calculo_producto(id_buscado):
     id_norm = normalizar_id(id_buscado)
 
-    # AUTOPIEZAS
+#autopiezas
     p_auto = df_stock[df_stock["id"] == id_norm] if df_stock is not None else pd.DataFrame()
 
     st_auto = 0
@@ -276,9 +270,6 @@ lbl_res = tk.Label(
 )
 lbl_res.pack(pady=20)
 
-# ============================================================
-# PESTAÑA 2 - LISTADO COMPLETO
-# ============================================================
 tab2 = ttk.Frame(notebook)
 notebook.add(tab2, text="📋 Listado Completo")
 
