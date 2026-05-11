@@ -222,7 +222,7 @@ notebook.pack(expand=True, fill="both", padx=10, pady=10)
 
 #tabla 1 de la interfaz grafica
 tab1 = ttk.Frame(notebook)
-notebook.add(tab1, text="🔍 Buscar por Código")
+notebook.add(tab1, text="Buscar por Código")
 
 tk.Label(
     tab1,
@@ -337,11 +337,8 @@ scroll_x.pack(side="bottom", fill="x")
 ventana.mainloop()
 
 
-#Buscar formas de exportar aplicaciones a un archivo excel
-
+#Buscar formas de exportar aplicaciones a un archivo excel (DONE)
 #error en linea 170: No encuentrwa el commando+buscar_individual, solucionar   
 #faggots 
-
 #enteoria esta mal ubicado el la revision de archivos  del excel,supuestamente se mezclan con el back end
-
-#programaa anda muy lento con 10 archvios,
+#programaa anda muy lento con 10 archvios, thompson tenia razon
